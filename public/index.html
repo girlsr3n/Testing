@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD PHP + Fetch API</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+
+    <h2 class="text-center mb-4">DAFTAR BUKBER</h2>
+
+    <!-- Notifikasi -->
+    <div id="toastContainer" class="position-fixed top-0 end-0 p-3"></div>
+
+    <div class="card p-4 mb-4">
+        <h3>Tambah Data</h3>
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input type="text" id="nama" class="form-control" placeholder="Nama">
+            </div>
+            <div class="col-md-3">
+                <input type="text" id="telepon" class="form-control" placeholder="Telepon">
+            </div>
+            <div class="col-md-3">
+                <input type="number" id="umur" class="form-control" placeholder="Umur">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100" onclick="addUser()">Tambah</button>
+            </div>
+        </div>
+    </div>
+
+    <h3>Daftar Nama</h3>
+    <table class="table table-bordered table-striped text-center">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Nama</th>
+                <th>Telepon</th>
+                <th>Umur</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody id="userTable"></tbody>
+    </table>
+
+    <!-- Modal Edit -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Data</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editId">
+                    <div class="mb-3">
+                        <input type="text" id="editnama" class="form-control" placeholder="Nama">
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" id="edittelepon" class="form-control" placeholder="Telepon">
+                    </div>
+                    <div class="mb-3">
+                        <input type="number" id="editumur" class="form-control" placeholder="Umur">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button class="btn btn-primary" onclick="updateUser()">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const apiUrl = "http://localhost/lebaran/api.php";
+
+        async function fetchUsers() {
+            try {
+                let res = await fetch(apiUrl);
+                let data = await res.json();
+                document.getElementById("userTable").innerHTML = data.map(user => `
+                    <tr id="row-${user.id}">
+                        <td>${user.id}</td>
+                        <td>${user.nama}</td>
+                        <td>${user.telepon}</td>
+                        <td>${user.umur}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" onclick="openEditModal(${user.id}, '${user.nama}', '${user.telepon}', ${user.umur})">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})">Hapus</button>
+                        </td>
+                    </tr>
+                `).join("");
+            } catch (error) {
+                showToast("Gagal mengambil data!", "danger");
+            }
+        }
+
+        async function addUser() {
+    let nama = document.getElementById("nama").value;
+    let telepon = document.getElementById("telepon").value;
+    let umur = document.getElementById("umur").value;
+
+    fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nama, telepon, umur })
+    })
+    .then(res => res.json())
+    .then(response => {
+        if (response.error) {
+            alert(response.error); // Jika nomor sudah ada, tampilkan pesan
+        } else {
+            alert("Data ditambahkan!");
+            fetchUsers();
+        }
+    })
+    .catch(error => console.error("Error:", error));
+}
+
+
+        async function deleteUser(id) {
+            await fetch(`${apiUrl}?id=${id}`, { method: "DELETE" });
+            showToast("Data dihapus!", "success");
+            document.getElementById(`row-${id}`).remove();
+        }
+
+        function openEditModal(id, nama, telepon, umur) {
+            document.getElementById("editId").value = id;
+            document.getElementById("editnama").value = nama;
+            document.getElementById("edittelepon").value = telepon;
+            document.getElementById("editumur").value = umur;
+            new bootstrap.Modal(document.getElementById("editModal")).show();
+        }
+
+        async function updateUser() {
+            let id = document.getElementById("editId").value;
+            let nama = document.getElementById("editnama").value.trim();
+            let telepon = document.getElementById("edittelepon").value.trim();
+            let umur = document.getElementById("editumur").value.trim();
+            if (!nama || !telepon || !umur) return showToast("Harap isi semua kolom!", "warning");
+
+            await fetch(`${apiUrl}?id=${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ nama, telepon, umur })
+            });
+
+            showToast("Data diperbarui!", "success");
+            fetchUsers();
+            bootstrap.Modal.getInstance(document.getElementById("editModal")).hide();
+        }
+
+        function showToast(message, type) {
+            let toast = document.createElement("div");
+            toast.className = `toast align-items-center text-bg-${type} border-0 show`;
+            toast.innerHTML = `<div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>`;
+            document.getElementById("toastContainer").appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        fetchUsers();
+    </script>
+</body>
+</html>
